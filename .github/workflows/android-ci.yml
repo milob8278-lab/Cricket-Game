@@ -12,7 +12,7 @@ permissions:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,11 +28,14 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # GitHub-hosted Ubuntu runners already provide Android SDK command-line tools.
+      # Do not run android-actions/setup-android here: its legacy "sdkmanager tools"
+      # install step fails because the obsolete tools package is no longer published.
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
 
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-36-ext1" "build-tools;36.0.0"
+        run: sdkmanager --install "platforms;android-36-ext1" "build-tools;36.0.0" "platform-tools"
 
       - name: Run unit tests and build debug APK
         run: gradle --no-daemon testDebugUnitTest assembleDebug
