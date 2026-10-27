@@ -250,7 +250,7 @@ fun LiveMatchScreen(
                                         spinAmount = 0.2f,
                                         pitchType = match.pitch,
                                         weather = match.weather,
-                                                                            isFrontFootNoBall = Random.nextFloat() < 0.04f
+                                                                                                isFrontFootNoBall = Random.nextFloat() < 0.04f
                                     ),
                                     animatableProgress = animatableProgress,
                                     onUpdateProgress = { isDelivering = it },
@@ -314,7 +314,7 @@ fun LiveMatchScreen(
                                         spinAmount = swingSpinAmount,
                                         pitchType = match.pitch,
                                         weather = match.weather,
-                                                                            isFrontFootNoBall = Random.nextFloat() < 0.04f
+                                                                                                isFrontFootNoBall = Random.nextFloat() < 0.04f
                                     ),
                                     animatableProgress = animatableProgress,
                                     onUpdateProgress = { isDelivering = it },
