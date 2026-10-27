@@ -1,0 +1,6 @@
+{
+  "name": "Real Cricket Pro",
+  "description": "Authentic Android cricket simulation with 3D/Lite visual engine, realistic batting & bowling controls, broadcast HUD, tournament, career, practice, DRS and Urdu/English support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
