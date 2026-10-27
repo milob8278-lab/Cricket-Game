@@ -249,7 +249,8 @@ fun LiveMatchScreen(
                                         swingAmount = (Random.nextFloat() - 0.5f) * 0.8f,
                                         spinAmount = 0.2f,
                                         pitchType = match.pitch,
-                                        weather = match.weather
+                                        weather = match.weather,
+                                    isFrontFootNoBall = Random.nextFloat() < 0.04f
                                     ),
                                     animatableProgress = animatableProgress,
                                     onUpdateProgress = { isDelivering = it },
@@ -312,7 +313,8 @@ fun LiveMatchScreen(
                                         swingAmount = swingSpinAmount,
                                         spinAmount = swingSpinAmount,
                                         pitchType = match.pitch,
-                                        weather = match.weather
+                                        weather = match.weather,
+                                    isFrontFootNoBall = Random.nextFloat() < 0.04f
                                     ),
                                     animatableProgress = animatableProgress,
                                     onUpdateProgress = { isDelivering = it },
@@ -525,16 +527,26 @@ private suspend fun executeDeliveryCycle(
     currentInnings.currentOverDeliveries.add(outcome)
     currentInnings.allDeliveries.add(outcome)
 
-    // Update striker stats
+    // Keep extras in the innings extras columns. outcome.runsScored is total innings runs.
+    when (outcome.extraType) {
+        "WD" -> currentInnings.extrasWides += outcome.runsScored
+        "NB" -> currentInnings.extrasNoBalls += 1
+        "LB" -> currentInnings.extrasLegByes += outcome.runsScored
+        "B" -> currentInnings.extrasByes += outcome.runsScored
+    }
+
+    // Extras are not batter runs. A wide is not a ball faced; a no-ball is.
     val strikerStats = currentInnings.striker.currentMatchStats
-    strikerStats.runsScored += outcome.runsScored
-    if (!outcome.isExtra) strikerStats.ballsFaced++
+    val batterRuns = if (outcome.extraType == null) outcome.runsScored else 0
+    strikerStats.runsScored += batterRuns
+    if (outcome.extraType != "WD") strikerStats.ballsFaced++
     if (outcome.isBoundaryFour) strikerStats.fours++
     if (outcome.isBoundarySix) strikerStats.sixes++
 
-    // Update bowler stats
+    // Byes and leg-byes are not charged to the bowler.
     val bowlerStats = currentInnings.currentBowler.currentMatchStats
-    bowlerStats.runsConceded += outcome.runsScored
+    val bowlerRunsConceded = if (outcome.extraType == "B" || outcome.extraType == "LB") 0 else outcome.runsScored
+    bowlerStats.runsConceded += bowlerRunsConceded
 
     if (outcome.isWicket) {
         currentInnings.wicketsLost++

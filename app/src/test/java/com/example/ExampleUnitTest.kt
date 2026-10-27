@@ -152,4 +152,38 @@ class ExampleUnitTest {
         assertEquals(4, shot.runs)
         assertFalse(shot.isAerial)
     }
+
+    @Test
+    fun physicsEngine_explicitFrontFootNoBallIsDeterministic() {
+        val teams = DefaultTeams.getInitialTeams()
+        val bowler = teams[0].getPlayingXI()[10]
+        val striker = teams[1].getPlayingXI()[0]
+
+        val result = CricketPhysicsEngine.simulateDelivery(
+            overNumber = 1,
+            ballInOver = 1,
+            bowler = bowler,
+            striker = striker,
+            deliveryInput = CricketPhysicsEngine.DeliveryInput(
+                deliveryType = DeliveryType.OUTSWINGER,
+                targetLineOffset = 0.1f,
+                targetLengthDistance = 0.4f,
+                speedKmh = 140,
+                swingAmount = 0f,
+                spinAmount = 0f,
+                pitchType = PitchType.FLAT_BATTING,
+                weather = WeatherCondition.SUNNY,
+                isFrontFootNoBall = true
+            ),
+            battingInput = null,
+            fieldPreset = FieldPreset.ATTACKING,
+            isFreeHitActive = false
+        )
+
+        assertTrue(result.outcome.isExtra)
+        assertEquals("NB", result.outcome.extraType)
+        assertEquals(1, result.outcome.runsScored)
+        assertFalse(result.outcome.isWicket)
+    }
+
 }
