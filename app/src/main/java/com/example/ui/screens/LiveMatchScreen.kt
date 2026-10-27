@@ -250,7 +250,7 @@ fun LiveMatchScreen(
                                         spinAmount = 0.2f,
                                         pitchType = match.pitch,
                                         weather = match.weather,
-                                                                                                isFrontFootNoBall = Random.nextFloat() < 0.04f
+                                        isFrontFootNoBall = Random.nextFloat() < 0.04f
                                     ),
                                     animatableProgress = animatableProgress,
                                     onUpdateProgress = { isDelivering = it },
@@ -314,7 +314,7 @@ fun LiveMatchScreen(
                                         spinAmount = swingSpinAmount,
                                         pitchType = match.pitch,
                                         weather = match.weather,
-                                                                                                isFrontFootNoBall = Random.nextFloat() < 0.04f
+                                        isFrontFootNoBall = Random.nextFloat() < 0.04f
                                     ),
                                     animatableProgress = animatableProgress,
                                     onUpdateProgress = { isDelivering = it },
@@ -553,7 +553,12 @@ private suspend fun executeDeliveryCycle(
         currentInnings.wicketsLost++
         strikerStats.isOut = true
         strikerStats.dismissalDescription = outcome.dismissalType.labelEn
-        bowlerStats.wicketsTaken++
+        // Run outs and obstructing-the-field dismissals are not credited to the bowler.
+        if (outcome.dismissalType != DismissalType.RUN_OUT &&
+            outcome.dismissalType != DismissalType.OBSTRUCTING_FIELD
+        ) {
+            bowlerStats.wicketsTaken++
+        }
 
         currentInnings.fallOfWickets.add(
             FallOfWicket(
