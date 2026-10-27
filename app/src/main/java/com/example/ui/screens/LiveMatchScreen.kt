@@ -250,7 +250,7 @@ fun LiveMatchScreen(
                                         spinAmount = 0.2f,
                                         pitchType = match.pitch,
                                         weather = match.weather,
-                                    isFrontFootNoBall = Random.nextFloat() < 0.04f
+                                                                            isFrontFootNoBall = Random.nextFloat() < 0.04f
                                     ),
                                     animatableProgress = animatableProgress,
                                     onUpdateProgress = { isDelivering = it },
@@ -314,7 +314,7 @@ fun LiveMatchScreen(
                                         spinAmount = swingSpinAmount,
                                         pitchType = match.pitch,
                                         weather = match.weather,
-                                    isFrontFootNoBall = Random.nextFloat() < 0.04f
+                                                                            isFrontFootNoBall = Random.nextFloat() < 0.04f
                                     ),
                                     animatableProgress = animatableProgress,
                                     onUpdateProgress = { isDelivering = it },
@@ -515,8 +515,9 @@ private suspend fun executeDeliveryCycle(
         animationSpec = tween(durationMillis = 750, easing = FastOutSlowInEasing)
     )
 
-    // Apply outcome to innings state
-    if (!outcome.isExtra) {
+    // Only wides and no-balls are illegal deliveries; byes/leg-byes still count as legal balls.
+    val isIllegalDelivery = outcome.extraType == "WD" || outcome.extraType == "NB"
+    if (!isIllegalDelivery) {
         currentInnings.legalBallsBowled++
         match.isFreeHitActive = false
     } else if (outcome.extraType == "NB") {
@@ -592,7 +593,7 @@ private suspend fun executeDeliveryCycle(
     onCommentary(result.commentaryEn, result.commentaryUr)
 
     // Check Over Completion (Rotate Strike & Pick next bowler)
-    if (currentInnings.legalBallsBowled % 6 == 0 && !outcome.isExtra) {
+    if (!isIllegalDelivery && currentInnings.legalBallsBowled > 0 && currentInnings.legalBallsBowled % 6 == 0) {
         bowlerStats.oversBowled += 1.0
         currentInnings.currentOverDeliveries.clear()
         // Rotate strike at end of over
