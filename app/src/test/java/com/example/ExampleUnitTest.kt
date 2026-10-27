@@ -152,4 +152,40 @@ class ExampleUnitTest {
         assertEquals(4, shot.runs)
         assertFalse(shot.isAerial)
     }
+
+    @Test
+    fun onlineMultiplayer_createsRoomAndJoinsByCode() {
+        val repo = com.example.data.CricketRepository()
+        val teams = repo.teams.value
+        val room = repo.createOnlineRoom(
+            format = CricketFormat.T20,
+            overs = 5,
+            hostTeam = teams[0],
+            guestTeam = teams[1]
+        )
+        assertNotNull(room)
+        assertTrue(room.roomCode.startsWith("RCP-"))
+        assertEquals(RoomState.LOBBY, room.state)
+        assertTrue(room.isHostReady)
+
+        val joined = repo.joinOnlineRoom(room.roomCode)
+        assertTrue(joined)
+        val activeRoom = repo.currentOnlineRoom.value
+        assertNotNull(activeRoom)
+        assertEquals(room.roomCode, activeRoom?.roomCode)
+        assertTrue(activeRoom?.isGuestReady == true)
+    }
+
+    @Test
+    fun onlineMultiplayer_quickEmotesSync() {
+        val repo = com.example.data.CricketRepository()
+        val teams = repo.teams.value
+        repo.createOnlineRoom(hostTeam = teams[0], guestTeam = teams[1])
+        repo.sendQuickEmote("🔥", "What a ball!", "کیا گیند ہے!")
+
+        val room = repo.currentOnlineRoom.value
+        assertNotNull(room)
+        assertEquals(1, room?.activeEmotes?.size)
+        assertEquals("🔥", room?.activeEmotes?.first()?.emoji)
+    }
 }

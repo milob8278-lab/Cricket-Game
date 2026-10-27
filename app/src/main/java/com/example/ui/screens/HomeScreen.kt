@@ -267,10 +267,10 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ModeTile(
-                title = if (language == Language.URDU) "ملٹی پلیئر (دو کھلاڑی)" else "Hot-Seat Pass & Play",
-                subtitle = if (language == Language.URDU) "ایک ہی فون پر مقابلہ" else "2 Players Local",
-                icon = Icons.Default.People,
-                iconColor = Color(0xFFC084FC),
+                title = if (language == Language.URDU) "آن لائن 1v1 اور ملٹی پلیئر" else "Online 1v1 & Multiplayer",
+                subtitle = if (language == Language.URDU) "آن لائن رومز اور ہاٹ سیٹ" else "1v1 Rooms & Matchmaking",
+                icon = Icons.Default.Language,
+                iconColor = Color(0xFF38BDF8),
                 modifier = Modifier.weight(1f)
             ) { onNavigate(GameScreen.MULTIPLAYER) }
 

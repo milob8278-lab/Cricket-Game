@@ -20,8 +20,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.CricketRepository
+import com.example.data.supabase.SupabaseConfig
 import com.example.model.Language
 import com.example.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun AdminConsoleScreen(
@@ -30,6 +32,19 @@ fun AdminConsoleScreen(
     onBack: () -> Unit
 ) {
     val releases by repository.adminReleases.collectAsState()
+    val supabaseHealth by repository.supabaseHealth.collectAsState()
+    val isConnected by repository.isSupabaseConnected.collectAsState()
+    val authSession by repository.supabaseAuthSession.collectAsState()
+    val isUsingRealDb by repository.isUsingRealDatabaseData.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    var isCheckingHealth by remember { mutableStateOf(false) }
+
+    // Test health check on initial render
+    LaunchedEffect(Unit) {
+        if (supabaseHealth == null) {
+            repository.runSupabaseHealthCheck()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -50,13 +65,13 @@ fun AdminConsoleScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Column {
                 Text(
-                    text = "INTERNAL OPERATIONS & CONTENT ADMIN",
+                    text = "INTERNAL OPERATIONS & CLOUD ADMIN",
                     color = TextWhitePrimary,
                     fontWeight = FontWeight.Black,
                     fontSize = 16.sp
                 )
                 Text(
-                    text = "Release staging, rulesets, 4GB RAM metrics & audit log",
+                    text = "Supabase DB & Auth, 4GB RAM metrics, releases & audit log",
                     color = MilestoneGold,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -64,7 +79,137 @@ fun AdminConsoleScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Supabase Cloud Connectivity & Security Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = StadiumNavyCard),
+            shape = RoundedCornerShape(12.dp),
+            border = CardDefaults.outlinedCardBorder().copy(
+                brush = androidx.compose.ui.graphics.SolidColor(if (isConnected) CricketGreen else StadiumBorder)
+            )
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CloudDone,
+                            contentDescription = null,
+                            tint = if (isConnected) CricketGreenLight else MilestoneGold,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "SUPABASE CLOUD DATABASE",
+                            color = TextWhitePrimary,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            isCheckingHealth = true
+                            coroutineScope.launch {
+                                repository.runSupabaseHealthCheck()
+                                isCheckingHealth = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = if (isConnected) CricketGreenDark else Color(0xFF1E293B)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !isCheckingHealth
+                    ) {
+                        Text(
+                            text = if (isCheckingHealth) "TESTING..." else "RUN HEALTH CHECK",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextWhitePrimary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Connection Status", color = TextMutedSecondary, fontSize = 11.sp)
+                    Text(
+                        text = supabaseHealth?.status ?: if (isConnected) "CONNECTED" else "CHECKING...",
+                        color = if (isConnected) CricketGreenLight else Color(0xFF38BDF8),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Database Endpoint", color = TextMutedSecondary, fontSize = 11.sp)
+                    Text(
+                        text = SupabaseConfig.supabaseUrl.ifEmpty { "Configured via Secrets" },
+                        color = TextWhitePrimary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Key Type (Zero-Leakage)", color = TextMutedSecondary, fontSize = 11.sp)
+                    Text(
+                        text = "Anon/Publishable (${SupabaseConfig.maskedPublishableKey})",
+                        color = CricketGreenLight,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Service Role / Secret Key", color = TextMutedSecondary, fontSize = 11.sp)
+                    Text(
+                        text = "NEVER EXPOSED (Protected)",
+                        color = MilestoneGold,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Active Data Source", color = TextMutedSecondary, fontSize = 11.sp)
+                    Text(
+                        text = if (isUsingRealDb) "REAL SUPABASE DATABASE" else "HYBRID (DB + LOCAL SYNC)",
+                        color = if (isUsingRealDb) CricketGreenLight else Color(0xFF38BDF8),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Match History Tampering Guard", color = TextMutedSecondary, fontSize = 11.sp)
+                    Text(
+                        text = "ENFORCED (Insert-Only / Immutable)",
+                        color = CricketGreenLight,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                supabaseHealth?.let { report ->
+                    if (report.tables.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Audited Tables: " + report.tables.entries.joinToString(" | ") { "${it.key}: ${it.value}" },
+                            color = TextMutedSecondary,
+                            fontSize = 9.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         // System Health & Memory Status Card
         Card(

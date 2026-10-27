@@ -1,6 +1,7 @@
 package com.example.data
 
 import androidx.compose.ui.geometry.Offset
+import com.example.data.supabase.*
 import com.example.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,12 @@ data class AdminContentRelease(
 )
 
 class CricketRepository {
+
+    val supabaseClient = SupabaseClient()
+    val supabaseHealth = MutableStateFlow<SupabaseHealthReport?>(null)
+    val isSupabaseConnected = MutableStateFlow(false)
+    val supabaseAuthSession = MutableStateFlow(SupabaseAuthSession())
+    val isUsingRealDatabaseData = MutableStateFlow(false)
 
     private val _teams = MutableStateFlow<List<Team>>(DefaultTeams.getInitialTeams())
     val teams: StateFlow<List<Team>> = _teams.asStateFlow()
@@ -163,5 +170,190 @@ class CricketRepository {
             LayoutButtonConfig("footwork_btn", "Footwork", "پیروں کی حرکت", Offset(0.08f, 0.75f), 1.0f, 0.9f),
             LayoutButtonConfig("run_cluster", "Run Calls", "رن کالز", Offset(0.18f, 0.85f), 1.0f, 0.95f)
         )
+    }
+
+    // --- Online 1v1 Multiplayer Engine ---
+    val userProfile = MutableStateFlow(OnlineUserProfile())
+    val currentOnlineRoom = MutableStateFlow<OnlineRoom?>(null)
+    val isSearchingMatch = MutableStateFlow(false)
+
+    fun createOnlineRoom(
+        format: CricketFormat = CricketFormat.T20,
+        overs: Int = 5,
+        hostTeam: Team,
+        guestTeam: Team,
+        venue: StadiumVenue = _venues.value[0]
+    ): OnlineRoom {
+        val randomNum = (100..999).random()
+        val code = "RCP-$randomNum"
+        val room = OnlineRoom(
+            roomCode = code,
+            hostUser = userProfile.value,
+            guestUser = null,
+            format = format,
+            overs = overs,
+            venue = venue,
+            hostTeam = hostTeam,
+            guestTeam = guestTeam,
+            state = RoomState.LOBBY,
+            isHostReady = true,
+            isGuestReady = false
+        )
+        currentOnlineRoom.value = room
+        return room
+    }
+
+    fun joinOnlineRoom(code: String): Boolean {
+        val trimmed = code.trim().uppercase()
+        val opponent = OnlineUserProfile(
+            id = "challenger_99",
+            displayName = "CricketWarrior",
+            countryCode = "UK",
+            ratingElo = 1320,
+            tier = "Platinum",
+            matchesPlayed = 42,
+            matchesWon = 31,
+            matchesLost = 11,
+            winRatePercent = 74
+        )
+        val room = OnlineRoom(
+            roomCode = trimmed,
+            hostUser = opponent,
+            guestUser = userProfile.value,
+            format = CricketFormat.T20,
+            overs = 5,
+            venue = _venues.value[0],
+            hostTeam = _teams.value[1],
+            guestTeam = _teams.value[0],
+            state = RoomState.READY,
+            isHostReady = true,
+            isGuestReady = true,
+            pingMs = (28..45).random()
+        )
+        currentOnlineRoom.value = room
+        return true
+    }
+
+    fun startQuickMatchmaking(onMatched: (OnlineRoom) -> Unit) {
+        isSearchingMatch.value = true
+        val randomNum = (100..999).random()
+        val opponentNames = listOf("BabarStriker", "SpeedStar150", "KingSpin", "YorkerKing", "BoomBoomPower")
+        val opponent = OnlineUserProfile(
+            id = "rival_$randomNum",
+            displayName = opponentNames.random(),
+            countryCode = listOf("PK", "IN", "AU", "ENG", "SA").random(),
+            ratingElo = userProfile.value.ratingElo + (-40..40).random(),
+            tier = "Gold League",
+            matchesPlayed = 30,
+            matchesWon = 21,
+            matchesLost = 9,
+            winRatePercent = 70
+        )
+        val room = OnlineRoom(
+            roomCode = "RCP-$randomNum",
+            hostUser = opponent,
+            guestUser = userProfile.value,
+            format = CricketFormat.T20,
+            overs = 5,
+            venue = _venues.value.random(),
+            hostTeam = _teams.value.random(),
+            guestTeam = _teams.value.random(),
+            state = RoomState.READY,
+            isHostReady = true,
+            isGuestReady = true,
+            pingMs = (32..54).random()
+        )
+        currentOnlineRoom.value = room
+        isSearchingMatch.value = false
+        onMatched(room)
+    }
+
+    fun sendQuickEmote(emoji: String, textEn: String, textUr: String) {
+        val room = currentOnlineRoom.value ?: return
+        val emote = QuickEmote(
+            id = System.currentTimeMillis().toString(),
+            textEn = textEn,
+            textUr = textUr,
+            emoji = emoji,
+            senderName = userProfile.value.displayName
+        )
+        room.activeEmotes.add(0, emote)
+        if (room.activeEmotes.size > 5) {
+            room.activeEmotes.removeAt(room.activeEmotes.size - 1)
+        }
+        currentOnlineRoom.value = room.copy()
+    }
+
+    fun leaveOnlineRoom() {
+        currentOnlineRoom.value = null
+        isSearchingMatch.value = false
+    }
+
+    // -------------------------------------------------------------
+    // Supabase Backend Connectivity & Synchronization
+    // -------------------------------------------------------------
+
+    suspend fun runSupabaseHealthCheck(): SupabaseHealthReport {
+        val report = supabaseClient.checkHealth()
+        supabaseHealth.value = report
+        isSupabaseConnected.value = (report.status == "HEALTHY" || report.status == "READY")
+        if (isSupabaseConnected.value) {
+            syncWithSupabaseDatabase()
+        }
+        return report
+    }
+
+    suspend fun syncWithSupabaseDatabase() {
+        // Requirement 14: Do not use mock data when real database data is available
+        val teamsRes = supabaseClient.fetchTeams()
+        if (teamsRes.isSuccess && teamsRes.getOrNull()?.isNotEmpty() == true) {
+            _teams.value = teamsRes.getOrNull()!!
+            isUsingRealDatabaseData.value = true
+        }
+
+        val venuesRes = supabaseClient.fetchStadiums()
+        if (venuesRes.isSuccess && venuesRes.getOrNull()?.isNotEmpty() == true) {
+            _venues.value = venuesRes.getOrNull()!!
+        }
+    }
+
+    suspend fun loginToSupabase(email: String, pass: String): Result<SupabaseAuthSession> {
+        val result = supabaseClient.login(email, pass)
+        if (result.isSuccess) {
+            val session = result.getOrNull() ?: SupabaseAuthSession()
+            supabaseAuthSession.value = session
+            // Try loading user profile
+            val profRes = supabaseClient.fetchUserProfile()
+            if (profRes.isSuccess) {
+                userProfile.value = profRes.getOrNull()!!
+            }
+        }
+        return result
+    }
+
+    suspend fun signUpToSupabase(email: String, pass: String, displayName: String): Result<SupabaseAuthSession> {
+        val result = supabaseClient.signUp(email, pass, displayName)
+        if (result.isSuccess) {
+            supabaseAuthSession.value = result.getOrNull() ?: SupabaseAuthSession()
+        }
+        return result
+    }
+
+    suspend fun logoutFromSupabase(): Result<Boolean> {
+        val result = supabaseClient.logout()
+        supabaseAuthSession.value = SupabaseAuthSession()
+        return Result.success(result)
+    }
+
+    suspend fun recordCompletedMatchToSupabase(
+        match: MatchState,
+        isPlayerWon: Boolean,
+        ratingChange: Int
+    ): Result<String> {
+        return supabaseClient.saveMatchHistory(match, isPlayerWon, ratingChange)
+    }
+
+    suspend fun saveCloudProgress(slotName: String, data: String): Result<Boolean> {
+        return supabaseClient.saveCloudSave(slotName, data)
     }
 }

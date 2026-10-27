@@ -17,6 +17,7 @@ import com.example.model.*
 import com.example.ui.screens.*
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.StadiumNavyDark
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -45,6 +46,11 @@ fun RealCricketProApp(
 ) {
     var currentScreen by remember { mutableStateOf(GameScreen.HOME) }
     val screenStack = remember { mutableStateListOf(GameScreen.HOME) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        repository.runSupabaseHealthCheck()
+    }
 
     fun navigateTo(screen: GameScreen) {
         screenStack.add(screen)
@@ -141,6 +147,16 @@ fun RealCricketProApp(
                     audio = audioEngine,
                     language = language,
                     onMatchFinished = {
+                        repository.currentMatch.value?.let { finishedMatch ->
+                            coroutineScope.launch {
+                                val playerWon = finishedMatch.matchResultSummaryEn.contains(finishedMatch.teamA.nameEn, ignoreCase = true)
+                                repository.recordCompletedMatchToSupabase(
+                                    match = finishedMatch,
+                                    isPlayerWon = playerWon,
+                                    ratingChange = if (playerWon) 25 else -15
+                                )
+                            }
+                        }
                         navigateTo(GameScreen.MATCH_RESULT)
                     },
                     onExitToHome = {
@@ -269,20 +285,21 @@ fun RealCricketProApp(
             GameScreen.MULTIPLAYER -> {
                 MultiplayerScreen(
                     teams = teams,
+                    venues = venues,
                     language = language,
                     onBack = { navigateBack() },
-                    onStartHotSeatMatch = { p1, p2 ->
+                    onStartMatch = { teamA, teamB, format, overs, venue, isOnline, roomCode ->
                         repository.createMatch(
-                            format = CricketFormat.T5,
-                            overs = 5,
+                            format = format,
+                            overs = overs,
                             difficulty = MatchDifficulty.MEDIUM,
-                            venue = venues[0],
+                            venue = venue,
                             pitch = PitchType.FLAT_BATTING,
                             weather = WeatherCondition.SUNNY,
                             isDayNight = true,
-                            teamA = p1,
-                            teamB = p2,
-                            tossWinner = p1,
+                            teamA = teamA,
+                            teamB = teamB,
+                            tossWinner = teamA,
                             electedToBat = true
                         )
                         navigateTo(GameScreen.LIVE_MATCH)
