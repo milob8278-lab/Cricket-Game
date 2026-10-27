@@ -1,0 +1,41 @@
+name: Android CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+
+      # GitHub-hosted Ubuntu runners already provide Android SDK command-line tools.
+      # Do not run android-actions/setup-android here: its legacy "sdkmanager tools"
+      # install step fails because the obsolete tools package is no longer published.
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install Android SDK packages
+        run: sdkmanager --install "platforms;android-36-ext1" "build-tools;36.0.0" "platform-tools"
+
+      - name: Run unit tests and build debug APK
+        run: gradle --no-daemon testDebugUnitTest assembleDebug

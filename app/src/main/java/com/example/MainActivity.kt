@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.ui.platform.LocalContext
 import com.example.audio.CricketAudioEngine
 import com.example.data.CricketRepository
@@ -26,6 +29,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
 
         repository = CricketRepository()
         audioEngine = CricketAudioEngine(applicationContext)

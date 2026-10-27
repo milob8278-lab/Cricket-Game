@@ -27,8 +27,33 @@ fun MultiplayerScreen(
     onBack: () -> Unit,
     onStartHotSeatMatch: (player1Team: Team, player2Team: Team) -> Unit
 ) {
-    var player1Team by remember { mutableStateOf(teams[0]) }
-    var player2Team by remember { mutableStateOf(teams[1]) }
+    var player1Team by remember(teams) { mutableStateOf(teams.getOrNull(0)) }
+    var player2Team by remember(teams) { mutableStateOf(teams.getOrNull(1)) }
+
+    if (teams.size < 2) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(StadiumNavyDark)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = if (language == Language.URDU) "ٹیمیں ابھی دستیاب نہیں ہیں" else "Teams are not available yet",
+                color = TextWhitePrimary,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(onClick = onBack) {
+                Text(if (language == Language.URDU) "واپس" else "Back")
+            }
+        }
+        return
+    }
+
+    val selectedPlayer1 = player1Team ?: teams[0]
+    val selectedPlayer2 = player2Team ?: teams[1]
 
     Column(
         modifier = Modifier
@@ -103,7 +128,7 @@ fun MultiplayerScreen(
                 Text("PLAYER 1 TEAM", color = MilestoneGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
                 teams.take(4).forEach { team ->
-                    val isSelected = team.id == player1Team.id
+                    val isSelected = team.id == selectedPlayer1.id
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -123,7 +148,7 @@ fun MultiplayerScreen(
                 Text("PLAYER 2 TEAM", color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
                 teams.drop(1).take(4).forEach { team ->
-                    val isSelected = team.id == player2Team.id
+                    val isSelected = team.id == selectedPlayer2.id
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -142,7 +167,7 @@ fun MultiplayerScreen(
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = { onStartHotSeatMatch(player1Team, player2Team) },
+            onClick = { onStartHotSeatMatch(selectedPlayer1, selectedPlayer2) },
             colors = ButtonDefaults.buttonColors(containerColor = CricketGreen),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier

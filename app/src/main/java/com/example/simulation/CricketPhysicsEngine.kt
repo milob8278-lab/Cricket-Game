@@ -14,7 +14,9 @@ object CricketPhysicsEngine {
         val swingAmount: Float, // -1.0 to 1.0
         val spinAmount: Float,  // -1.0 to 1.0
         val pitchType: PitchType,
-        val weather: WeatherCondition
+        val weather: WeatherCondition,
+        // Result of checking the bowler's front foot at release time.
+        val isFrontFootNoBall: Boolean = false
     )
 
     data class BattingInput(
@@ -57,7 +59,7 @@ object CricketPhysicsEngine {
 
         // Check for Bowling Extras: Wide or No-ball
         val isWide = abs(deliveryInput.targetLineOffset) > 0.82f
-        val isNoBall = Random.nextFloat() < 0.04f // 4% chance of overstepping front foot
+        val isNoBall = deliveryInput.isFrontFootNoBall
 
         if (isWide && !isNoBall) {
             val outcome = BallDeliveryOutcome(
